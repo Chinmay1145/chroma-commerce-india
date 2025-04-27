@@ -18,10 +18,16 @@ const ProductCard = ({ product }: ProductCardProps) => {
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) 
     : 0;
 
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart(product);
+  };
+
   return (
     <Card className="overflow-hidden transition-all duration-300 group hover:shadow-lg game-card border-border">
       <div className="relative">
-        <Link to={`/products/${product.id}`}>
+        <Link to={`/product/${product.id}`}>
           <img
             src={product.imageUrl}
             alt={product.name}
@@ -53,7 +59,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </div>
         </div>
         
-        <Link to={`/products/${product.id}`} className="block">
+        <Link to={`/product/${product.id}`} className="block">
           <h3 className="font-medium text-lg mb-1 line-clamp-1 group-hover:text-primary transition-colors">
             {product.name}
           </h3>
@@ -75,7 +81,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
       
       <CardFooter className="p-4 pt-0">
         <Button 
-          onClick={() => addToCart(product)} 
+          onClick={handleAddToCart} 
           className="w-full gap-2"
           variant={isInCart(product.id) ? "secondary" : "default"}
         >
