@@ -1,4 +1,3 @@
-
 import { Product } from "@/data/products";
 
 export interface CartItem {
@@ -19,6 +18,7 @@ export interface CheckoutFormData {
   cardName: string;
   expiryDate: string;
   cvv: string;
+  upiId: string;
 }
 
 export interface OrderSummary {

@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CheckoutFormData } from "@/types";
 import { generateOrderId } from "@/utils/helpers";
+import { CreditCard, Wallet2, QrCode } from "lucide-react";
 
 interface CheckoutFormProps {
   onSubmit: (orderId: string) => void;
@@ -15,6 +17,7 @@ interface CheckoutFormProps {
 const CheckoutForm = ({ onSubmit }: CheckoutFormProps) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("card");
   const [formData, setFormData] = useState<CheckoutFormData>({
     firstName: "",
     lastName: "",
@@ -28,6 +31,7 @@ const CheckoutForm = ({ onSubmit }: CheckoutFormProps) => {
     cardName: "",
     expiryDate: "",
     cvv: "",
+    upiId: "",
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof CheckoutFormData, string>>>({});
@@ -64,27 +68,35 @@ const CheckoutForm = ({ onSubmit }: CheckoutFormProps) => {
     if (!formData.city.trim()) newErrors.city = "City is required";
     if (!formData.state.trim()) newErrors.state = "State is required";
     if (!formData.zipCode.trim()) {
-      newErrors.zipCode = "ZIP code is required";
+      newErrors.zipCode = "PIN code is required";
     } else if (!/^\d{6}$/.test(formData.zipCode.replace(/[^0-9]/g, ''))) {
-      newErrors.zipCode = "ZIP code should be 6 digits";
+      newErrors.zipCode = "PIN code should be 6 digits";
     }
     
-    // Validate payment information
-    if (!formData.cardNumber.trim()) {
-      newErrors.cardNumber = "Card number is required";
-    } else if (!/^\d{16}$/.test(formData.cardNumber.replace(/\s/g, ''))) {
-      newErrors.cardNumber = "Card number should be 16 digits";
-    }
-    if (!formData.cardName.trim()) newErrors.cardName = "Name on card is required";
-    if (!formData.expiryDate.trim()) {
-      newErrors.expiryDate = "Expiry date is required";
-    } else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(formData.expiryDate)) {
-      newErrors.expiryDate = "Expiry date should be in MM/YY format";
-    }
-    if (!formData.cvv.trim()) {
-      newErrors.cvv = "CVV is required";
-    } else if (!/^\d{3,4}$/.test(formData.cvv)) {
-      newErrors.cvv = "CVV should be 3 or 4 digits";
+    // Validate payment information based on selected method
+    if (paymentMethod === "card") {
+      if (!formData.cardNumber.trim()) {
+        newErrors.cardNumber = "Card number is required";
+      } else if (!/^\d{16}$/.test(formData.cardNumber.replace(/\s/g, ''))) {
+        newErrors.cardNumber = "Card number should be 16 digits";
+      }
+      if (!formData.cardName.trim()) newErrors.cardName = "Name on card is required";
+      if (!formData.expiryDate.trim()) {
+        newErrors.expiryDate = "Expiry date is required";
+      } else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(formData.expiryDate)) {
+        newErrors.expiryDate = "Expiry date should be in MM/YY format";
+      }
+      if (!formData.cvv.trim()) {
+        newErrors.cvv = "CVV is required";
+      } else if (!/^\d{3,4}$/.test(formData.cvv)) {
+        newErrors.cvv = "CVV should be 3 or 4 digits";
+      }
+    } else if (paymentMethod === "upi") {
+      if (!formData.upiId.trim()) {
+        newErrors.upiId = "UPI ID is required";
+      } else if (!/^[\w\.\-]+@[\w\-]+$/.test(formData.upiId)) {
+        newErrors.upiId = "Invalid UPI ID format";
+      }
     }
     
     setErrors(newErrors);
@@ -250,73 +262,143 @@ const CheckoutForm = ({ onSubmit }: CheckoutFormProps) => {
       
       {/* Payment Information */}
       <div>
-        <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="cardNumber">Card Number</Label>
-            <Input
-              id="cardNumber"
-              name="cardNumber"
-              placeholder="1234 5678 9012 3456"
-              value={formData.cardNumber}
-              onChange={handleChange}
-              className={errors.cardNumber ? "border-destructive" : ""}
-            />
-            {errors.cardNumber && (
-              <p className="text-destructive text-sm">{errors.cardNumber}</p>
-            )}
+        <h3 className="text-lg font-semibold mb-4">Payment Method</h3>
+        
+        <RadioGroup
+          value={paymentMethod}
+          onValueChange={setPaymentMethod}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"
+        >
+          <div className={`flex items-center justify-between rounded-lg border p-4 cursor-pointer ${
+            paymentMethod === "card" ? "border-primary" : "border-border"
+          }`}>
+            <div className="flex items-center space-x-3">
+              <RadioGroupItem value="card" id="card" />
+              <Label htmlFor="card" className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                <span>Credit/Debit Card</span>
+              </Label>
+            </div>
           </div>
           
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="cardName">Name on Card</Label>
-            <Input
-              id="cardName"
-              name="cardName"
-              value={formData.cardName}
-              onChange={handleChange}
-              className={errors.cardName ? "border-destructive" : ""}
-            />
-            {errors.cardName && (
-              <p className="text-destructive text-sm">{errors.cardName}</p>
-            )}
+          <div className={`flex items-center justify-between rounded-lg border p-4 cursor-pointer ${
+            paymentMethod === "upi" ? "border-primary" : "border-border"
+          }`}>
+            <div className="flex items-center space-x-3">
+              <RadioGroupItem value="upi" id="upi" />
+              <Label htmlFor="upi" className="flex items-center gap-2">
+                <QrCode className="h-4 w-4" />
+                <span>UPI Payment</span>
+              </Label>
+            </div>
           </div>
           
+          <div className={`flex items-center justify-between rounded-lg border p-4 cursor-pointer ${
+            paymentMethod === "cod" ? "border-primary" : "border-border"
+          }`}>
+            <div className="flex items-center space-x-3">
+              <RadioGroupItem value="cod" id="cod" />
+              <Label htmlFor="cod" className="flex items-center gap-2">
+                <Wallet2 className="h-4 w-4" />
+                <span>Cash on Delivery</span>
+              </Label>
+            </div>
+          </div>
+        </RadioGroup>
+
+        {paymentMethod === "card" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="cardNumber">Card Number</Label>
+              <Input
+                id="cardNumber"
+                name="cardNumber"
+                placeholder="1234 5678 9012 3456"
+                value={formData.cardNumber}
+                onChange={handleChange}
+                className={errors.cardNumber ? "border-destructive" : ""}
+              />
+              {errors.cardNumber && (
+                <p className="text-destructive text-sm">{errors.cardNumber}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="cardName">Name on Card</Label>
+              <Input
+                id="cardName"
+                name="cardName"
+                value={formData.cardName}
+                onChange={handleChange}
+                className={errors.cardName ? "border-destructive" : ""}
+              />
+              {errors.cardName && (
+                <p className="text-destructive text-sm">{errors.cardName}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="expiryDate">Expiry Date</Label>
+              <Input
+                id="expiryDate"
+                name="expiryDate"
+                placeholder="MM/YY"
+                value={formData.expiryDate}
+                onChange={handleChange}
+                className={errors.expiryDate ? "border-destructive" : ""}
+              />
+              {errors.expiryDate && (
+                <p className="text-destructive text-sm">{errors.expiryDate}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="cvv">CVV</Label>
+              <Input
+                id="cvv"
+                name="cvv"
+                type="password"
+                placeholder="123"
+                value={formData.cvv}
+                onChange={handleChange}
+                className={errors.cvv ? "border-destructive" : ""}
+                maxLength={4}
+              />
+              {errors.cvv && (
+                <p className="text-destructive text-sm">{errors.cvv}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {paymentMethod === "upi" && (
           <div className="space-y-2">
-            <Label htmlFor="expiryDate">Expiry Date</Label>
+            <Label htmlFor="upiId">UPI ID</Label>
             <Input
-              id="expiryDate"
-              name="expiryDate"
-              placeholder="MM/YY"
-              value={formData.expiryDate}
+              id="upiId"
+              name="upiId"
+              placeholder="username@upi"
+              value={formData.upiId}
               onChange={handleChange}
-              className={errors.expiryDate ? "border-destructive" : ""}
+              className={errors.upiId ? "border-destructive" : ""}
             />
-            {errors.expiryDate && (
-              <p className="text-destructive text-sm">{errors.expiryDate}</p>
+            {errors.upiId && (
+              <p className="text-destructive text-sm">{errors.upiId}</p>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="cvv">CVV</Label>
-            <Input
-              id="cvv"
-              name="cvv"
-              type="password"
-              placeholder="123"
-              value={formData.cvv}
-              onChange={handleChange}
-              className={errors.cvv ? "border-destructive" : ""}
-              maxLength={4}
-            />
-            {errors.cvv && (
-              <p className="text-destructive text-sm">{errors.cvv}</p>
-            )}
+        )}
+
+        {paymentMethod === "cod" && (
+          <div className="bg-secondary/30 p-4 rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              Pay with cash upon delivery. Additional charges may apply.
+            </p>
           </div>
-        </div>
+        )}
       </div>
       
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Processing Payment..." : "Place Order"}
+        {loading ? "Processing Payment..." : `Place Order (${paymentMethod.toUpperCase()})`}
       </Button>
     </form>
   );
